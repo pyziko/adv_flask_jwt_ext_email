@@ -1,11 +1,11 @@
 import hmac
 import traceback
 
-from flask import request, make_response, render_template, redirect
+from flask import request, make_response, render_template
 from flask_restful import Resource
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt
-from marshmallow import ValidationError
 
+from mail_lib.mail_gun import MailGunException
 from schemas.user import UserSchema
 from models.user import UserModel
 from blacklist import BLACKLIST
@@ -42,6 +42,10 @@ class UserRegister(Resource):
             user.save_to_db()
             user.send_confirmation_email()
             return {"message": SUCCESS_REGISTER_MESSAGE}, 201
+
+        except MailGunException as err:
+            user.delete_from_db()
+            return {"message": str(err)}, 500
         except:
             traceback.print_exc()
             return {"message": FAILED_TO_CREATE}, 500

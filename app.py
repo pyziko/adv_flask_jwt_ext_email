@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, jsonify
 from flask_restful import Api
 from flask_jwt_extended import JWTManager
@@ -11,11 +13,11 @@ from resources.store import Store, StoreList
 
 from ma import ma
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URI")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["PROPAGATE_EXCEPTIONS"] = True
 
-app.secret_key = "pyziko"  # could do app.config['JWT_SECRET_KEY'] if we prefer
+app.secret_key = os.environ.get("SECRET_KEY")  # could do app.config['JWT_SECRET_KEY'] if we prefer
 api = Api(app)
 
 

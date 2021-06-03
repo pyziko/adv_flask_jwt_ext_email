@@ -1,6 +1,6 @@
 import hmac
 
-from flask import request
+from flask import request, make_response, render_template, redirect
 from flask_restful import Resource
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt
 from marshmallow import ValidationError
@@ -105,4 +105,7 @@ class UserConfirm(Resource):
             user.save_to_db()
         else:
             return {"message": USER_NOT_FOUND}, 404
-        return {"message": USER_CONFIRMED}, 200
+        headers = {"Content-Type": "text/html"}
+        return make_response(render_template("confirmation_page.html", email=user.username), 200, headers)
+        # todo info in we intent to load a page from another location
+        # return redirect("http://localhost:300", code=302)

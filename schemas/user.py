@@ -1,4 +1,5 @@
 from ma import ma
+from marshmallow import pre_dump
 from models.user import UserModel
 
 
@@ -6,11 +7,16 @@ from models.user import UserModel
 class UserSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = UserModel
-        load_only = ("password",)
-        dump_only = ("id", "activated")
+        load_only = ("password",)   # don't include when returning to user
+        dump_only = ("id", "confirmation")  # not needed when passing data for creation
+        include_relationships = True
         load_instance = True
 
-    # todo info: >> No longer needed as flask marshmallow will use the one in the model class
-    # id = fields.Int()
-    # username = fields.Str(required=True)
-    # password = fields.Str(required=True)
+    # called before dumping
+    # ensuring to send back only the most_recent_confirmation
+    @pre_dump   # not we have post_dump, pre_load, post_load
+    def _pre_dump(self, user: UserModel, **kwargs):
+        user.confirmation = [user.most_recent_confirmation]
+        print(user.confirmation)
+        return user
+

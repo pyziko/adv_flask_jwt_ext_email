@@ -1,11 +1,12 @@
 import hmac
 import traceback
 
-from flask import request, make_response, render_template
+from flask import request
 from flask_restful import Resource
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt
 
 from mail_lib.mail_gun import MailGunException
+from models.confirmation import ConfirmationModel
 from schemas.user import UserSchema
 from models.user import UserModel
 from blacklist import BLACKLIST
@@ -40,14 +41,17 @@ class UserRegister(Resource):
         try:
 
             user.save_to_db()
+            confirmation = ConfirmationModel(user.id)
+            confirmation.save_to_db()   # lazy=dynamic handy saving child(confirmation) after user was created before
             user.send_confirmation_email()
             return {"message": SUCCESS_REGISTER_MESSAGE}, 201
 
         except MailGunException as err:
-            user.delete_from_db()
+            user.delete_from_db() # rollback
             return {"message": str(err)}, 500
-        except:
+        except:  # failed to save user to db
             traceback.print_exc()
+            user.delete_from_db()
             return {"message": FAILED_TO_CREATE}, 500
 
 
@@ -87,7 +91,8 @@ class UserLogin(Resource):
         # this is what the `authenticate()` function did in security.py
         if user and hmac.compare_digest(user.password, user_data.password):
             # identity= is what the identity() function did in security.py—now stored in the JWT
-            if user.activated:
+            confirmation = user.most_recent_confirmation
+            if confirmation and confirmation.confirmed:
                 access_token = create_access_token(identity=user.id, fresh=True)
                 refresh_token = create_refresh_token(user.id)
                 return {"access_token": access_token, "refresh_token": refresh_token}, 200
@@ -114,17 +119,3 @@ class TokenRefresh(Resource):
         new_token = create_access_token(identity=current_user, fresh=False)
         return {"access_token": new_token}, 200
 
-
-class UserConfirm(Resource):
-    @classmethod
-    def get(cls, user_id: int):
-        user = UserModel.find_by_id(user_id)
-        if user:
-            user.activated = True
-            user.save_to_db()
-        else:
-            return {"message": USER_NOT_FOUND}, 404
-        headers = {"Content-Type": "text/html"}
-        return make_response(render_template("confirmation_page.html", email=user.username), 200, headers)
-        # todo info in we intent to load a page from another location
-        # return redirect("http://localhost:300", code=302)

@@ -6,9 +6,7 @@ from db import db
 from requests import Response
 
 from mail_lib.mail_gun import Mailgun
-
-# CUSTOM JSON TYPES ->> no longer required cos of marshmallow
-# UserJSON = Dict[str, Union[int, str]]
+from models.confirmation import ConfirmationModel
 
 
 class UserModel(db.Model):
@@ -18,12 +16,19 @@ class UserModel(db.Model):
     username = db.Column(db.String(80), nullable=False, unique=True)
     password = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(80), nullable=False, unique=True)
-    activated = db.Column(db.Boolean, default=False)
 
-    # todo info: no longer needed as nullable=False
-    # def __init__(self, username: str, password: str):  # we are using _id because id is a python keyword
-    #     self.username = username
-    #     self.password = password
+    confirmation = db.relationship("ConfirmationModel", lazy="dynamic", cascade="all, delete-orphan")
+
+    # if lazy is dynamic u can add child later as below else you will get None
+    # user = UserModel(...)
+    # confirmation = ConfirmationModel(...)
+    # confirmation.save_to_db()
+    # print(user.confirmation
+
+    # allow us to do this   UserModel.most_recent_confirmation, rather than UserModel.most_recent_confirmation()
+    @property
+    def most_recent_confirmation(self) -> ConfirmationModel:
+        return self.confirmation.order_by(db.desc(ConfirmationModel.expire_at)).first()
 
     def save_to_db(self) -> None:
         db.session.add(self)
@@ -47,9 +52,9 @@ class UserModel(db.Model):
 
     def send_confirmation_email(self) -> Response:
         # root http://localhost:5000
-        # userconfirm is the name of the route i.e UserConfirm in lowercase
+        # confirmation is the name of the route i.e UserConfirm in lowercase
         # hence we have http://localhost:5000/user_confirm/1
-        link = request.url_root[:-1] + url_for("userconfirm", user_id=self.id)
+        link = request.url_root[:-1] + url_for("confirmation", confirmation_id=self.most_recent_confirmation.id)
 
         subject = "Registration Confirmation"
         text = f"Please click the link to confirm your registration: {link}"

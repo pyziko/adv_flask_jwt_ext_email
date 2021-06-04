@@ -5,7 +5,7 @@ from flask import request, url_for
 from db import db
 from requests import Response
 
-from mail_lib.mail_gun import Mailgun
+from libs.mail_gun import Mailgun
 from models.confirmation import ConfirmationModel
 
 

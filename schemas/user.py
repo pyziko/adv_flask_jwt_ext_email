@@ -17,6 +17,5 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
     @pre_dump   # not we have post_dump, pre_load, post_load
     def _pre_dump(self, user: UserModel, **kwargs):
         user.confirmation = [user.most_recent_confirmation]
-        print(user.confirmation)
         return user
 
